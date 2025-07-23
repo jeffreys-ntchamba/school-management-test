@@ -46,12 +46,14 @@ function openEstablishmentModal(action, id = null) {
     if (action === 'add') {
         SchoolManagement.elements.establishmentModalLabel.textContent = 'Ajouter un établissement';
         SchoolManagement.elements.saveEstablishmentBtn.textContent = 'Enregistrer';
+        SchoolManagement.elements.establishmentId.value = '';
     } else {
         SchoolManagement.elements.establishmentModalLabel.textContent = 'Modifier un établissement';
         SchoolManagement.elements.saveEstablishmentBtn.textContent = 'Modifier';
         
         const establishment = SchoolManagement.data.establishments.find(est => est.id === id);
         if (establishment) {
+            // Remplir le formulaire avec les données existantes
             SchoolManagement.elements.establishmentId.value = establishment.id;
             SchoolManagement.elements.establishmentName.value = establishment.name;
             SchoolManagement.elements.establishmentDistrict.value = establishment.district;
@@ -59,7 +61,7 @@ function openEstablishmentModal(action, id = null) {
         }
     }
     
-    // Rendu des classes si en mode édition
+    // Rafraîchir les classes
     if (action === 'edit' && id) {
         renderClassesTable(id);
     } else {
@@ -75,21 +77,27 @@ function saveEstablishment() {
     if (!Utils.validateForm(SchoolManagement.elements.establishmentForm)) return;
     
     const establishmentData = {
-        id: SchoolManagement.currentState.action === 'add' ? Utils.generateId() : SchoolManagement.elements.establishmentId.value,
+        id: SchoolManagement.currentState.action === 'add' 
+            ? Utils.generateId() 
+            : SchoolManagement.elements.establishmentId.value,
         name: SchoolManagement.elements.establishmentName.value,
         district: SchoolManagement.elements.establishmentDistrict.value,
         creationDate: SchoolManagement.elements.establishmentDate.value
     };
-    
+
     if (SchoolManagement.currentState.action === 'add') {
         SchoolManagement.data.establishments.push(establishmentData);
     } else {
         const index = SchoolManagement.data.establishments.findIndex(est => est.id === establishmentData.id);
         if (index !== -1) {
+            // Mise à jour de l'établissement existant
             SchoolManagement.data.establishments[index] = establishmentData;
+        } else {
+            // Cas où l'ID n'existe pas (ne devrait pas arriver)
+            SchoolManagement.data.establishments.push(establishmentData);
         }
     }
-    
+
     SchoolManagement.saveData();
     renderEstablishmentsTable();
     SchoolManagement.elements.establishmentModal.hide();
@@ -126,9 +134,12 @@ function showDeleteConfirmation(type, id) {
 
 function confirmDelete() {
     const { deleteType, itemToDelete } = SchoolManagement.currentState;
-    
+    let classIdToRefresh = null;
+    let establishmentIdToRefresh = null;
+
     switch (deleteType) {
         case 'establishment':
+            // Suppression d'un établissement et toutes ses dépendances
             const classIds = SchoolManagement.data.classes
                 .filter(cls => cls.establishmentId === itemToDelete)
                 .map(cls => cls.id);
@@ -139,29 +150,41 @@ function confirmDelete() {
             
             SchoolManagement.data.classes = SchoolManagement.data.classes.filter(cls => cls.establishmentId !== itemToDelete);
             SchoolManagement.data.establishments = SchoolManagement.data.establishments.filter(est => est.id !== itemToDelete);
+            
+            renderEstablishmentsTable();
             break;
             
         case 'class':
+            // Trouver la classe avant suppression pour connaître l'établissement parent
+            const classToDelete = SchoolManagement.data.classes.find(c => c.id === itemToDelete);
+            establishmentIdToRefresh = classToDelete?.establishmentId;
+            
             SchoolManagement.data.students = SchoolManagement.data.students.filter(student => student.classId !== itemToDelete);
             SchoolManagement.data.classes = SchoolManagement.data.classes.filter(cls => cls.id !== itemToDelete);
+            
+            if (establishmentIdToRefresh) {
+                renderClassesTable(establishmentIdToRefresh);
+            }
             break;
             
         case 'student':
+            // Trouver l'élève avant suppression pour connaître sa classe
+            const studentToDelete = SchoolManagement.data.students.find(s => s.id === itemToDelete);
+            classIdToRefresh = studentToDelete?.classId;
+            
+            // Effectuer la suppression
             SchoolManagement.data.students = SchoolManagement.data.students.filter(s => s.id !== itemToDelete);
+            
+            // Rafraîchir l'affichage des élèves si on est dans le modal de classe
+            if (classIdToRefresh) {
+                renderStudentsTable(classIdToRefresh);
+            }
             break;
     }
-    
+
+    // Sauvegarder les changements
     SchoolManagement.saveData();
     
-    if (deleteType === 'establishment') {
-        renderEstablishmentsTable();
-    } else if (deleteType === 'class') {
-        const cls = SchoolManagement.data.classes.find(c => c.id === itemToDelete);
-        if (cls) renderClassesTable(cls.establishmentId);
-    } else if (deleteType === 'student') {
-        const student = SchoolManagement.data.students.find(s => s.id === itemToDelete);
-        if (student) renderStudentsTable(student.classId);
-    }
-    
+    // Fermer le modal de confirmation
     SchoolManagement.elements.confirmationModal.hide();
 }
