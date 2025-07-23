@@ -1,6 +1,8 @@
 # School Management Application
-
+Test Technique:
 Une application web pour gérer les établissements scolaires, les classes et les élèves.
+
+<img width="1277" height="468" alt="image" src="https://github.com/user-attachments/assets/5ebd23cc-1fe7-44e1-ac8d-6b2b6de1be43" />
 
 ## Fonctionnalités
 
