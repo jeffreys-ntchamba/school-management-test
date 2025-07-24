@@ -39,6 +39,13 @@ function renderClassesTable(establishmentId) {
 }
 
 function openClassModal(action, id = null) {
+    // Vérifier qu'on a bien un établissement parent avant d'ouvrir le modal
+    if (action === 'add' && !SchoolManagement.currentState.currentEstablishmentId) {
+        alert("Vous devez d'abord créer ou sélectionner un établissement");
+        return;
+    }
+
+    // Réinitialiser l'état avant toute action
     SchoolManagement.currentState.action = action;
     SchoolManagement.currentState.currentClassId = id;
     
@@ -48,9 +55,13 @@ function openClassModal(action, id = null) {
         SchoolManagement.elements.classModalLabel.textContent = 'Ajouter une classe';
         SchoolManagement.elements.saveClassBtn.textContent = 'Enregistrer';
         SchoolManagement.elements.classEstablishmentId.value = SchoolManagement.currentState.currentEstablishmentId;
+        // Désactiver le bouton d'ajout d'élève si on est en mode ajout
+        SchoolManagement.elements.addStudentBtn.disabled = true;
     } else {
         SchoolManagement.elements.classModalLabel.textContent = 'Modifier une classe';
         SchoolManagement.elements.saveClassBtn.textContent = 'Modifier';
+        // Activer le bouton d'ajout d'élève si on est en mode édition
+        SchoolManagement.elements.addStudentBtn.disabled = false;
         
         const cls = SchoolManagement.data.classes.find(c => c.id === id);
         if (cls) {
@@ -76,22 +87,30 @@ function openClassModal(action, id = null) {
 function saveClass() {
     if (!Utils.validateForm(SchoolManagement.elements.classForm)) return;
     
+    // Vérifier explicitement le mode d'action
+    const isEditMode = SchoolManagement.currentState.action === 'edit' && 
+                       SchoolManagement.elements.classId.value;
+    
     const classData = {
-        id: SchoolManagement.currentState.action === 'add' ? Utils.generateId() : SchoolManagement.elements.classId.value,
+        id: isEditMode ? SchoolManagement.elements.classId.value : Utils.generateId(),
         establishmentId: SchoolManagement.elements.classEstablishmentId.value,
         name: SchoolManagement.elements.className.value,
         field: SchoolManagement.elements.classField.value,
         teacher: SchoolManagement.elements.classTeacher.value
     };
     
-    if (SchoolManagement.currentState.action === 'add') {
-        SchoolManagement.data.classes.push(classData);
-    } else {
+    if (isEditMode) {
         const index = SchoolManagement.data.classes.findIndex(cls => cls.id === classData.id);
         if (index !== -1) {
             SchoolManagement.data.classes[index] = classData;
         }
+    } else {
+        SchoolManagement.data.classes.push(classData);
     }
+    
+    // Sauvegarder l'état après l'opération
+    SchoolManagement.currentState.currentClassId = classData.id;
+    SchoolManagement.currentState.action = 'edit';
     
     SchoolManagement.saveData();
     renderClassesTable(classData.establishmentId);

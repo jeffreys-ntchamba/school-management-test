@@ -40,6 +40,12 @@ function renderStudentsTable(classId) {
 }
 
 function openStudentModal(action, id = null) {
+    // Vérifier qu'on a bien une classe parent avant d'ouvrir le modal
+    if (action === 'add' && !SchoolManagement.currentState.currentClassId) {
+        alert("Vous devez d'abord créer ou sélectionner une classe");
+        return;
+    }
+
     SchoolManagement.currentState.action = action;
     SchoolManagement.currentState.currentStudentId = id;
     
@@ -70,8 +76,12 @@ function openStudentModal(action, id = null) {
 function saveStudent() {
     if (!Utils.validateForm(SchoolManagement.elements.studentForm)) return;
     
+    // Sauvegarder l'état avant la modification
+    const currentClassId = SchoolManagement.currentState.currentClassId;
+    const currentAction = SchoolManagement.currentState.action;
+    
     const studentData = {
-        id: SchoolManagement.currentState.action === 'add' ? Utils.generateId() : SchoolManagement.elements.studentId.value,
+        id: currentAction === 'add' ? Utils.generateId() : SchoolManagement.elements.studentId.value,
         classId: SchoolManagement.elements.studentClassId.value,
         lastName: SchoolManagement.elements.studentLastName.value,
         firstName: SchoolManagement.elements.studentFirstName.value,
@@ -79,7 +89,7 @@ function saveStudent() {
         gender: SchoolManagement.elements.studentGender.value
     };
     
-    if (SchoolManagement.currentState.action === 'add') {
+    if (currentAction === 'add') {
         SchoolManagement.data.students.push(studentData);
     } else {
         const index = SchoolManagement.data.students.findIndex(s => s.id === studentData.id);
@@ -87,6 +97,10 @@ function saveStudent() {
             SchoolManagement.data.students[index] = studentData;
         }
     }
+    
+    // Restaurer l'état après sauvegarde
+    SchoolManagement.currentState.currentClassId = currentClassId;
+    SchoolManagement.currentState.action = 'edit';
     
     SchoolManagement.saveData();
     renderStudentsTable(studentData.classId);

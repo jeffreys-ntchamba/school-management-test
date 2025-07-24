@@ -38,6 +38,7 @@ function renderEstablishmentsTable() {
 }
 
 function openEstablishmentModal(action, id = null) {
+    // Réinitialiser l'état avant toute action
     SchoolManagement.currentState.action = action;
     SchoolManagement.currentState.currentEstablishmentId = id;
     
@@ -46,14 +47,14 @@ function openEstablishmentModal(action, id = null) {
     if (action === 'add') {
         SchoolManagement.elements.establishmentModalLabel.textContent = 'Ajouter un établissement';
         SchoolManagement.elements.saveEstablishmentBtn.textContent = 'Enregistrer';
-        SchoolManagement.elements.establishmentId.value = '';
+        SchoolManagement.elements.addClassBtn.disabled = true;
     } else {
         SchoolManagement.elements.establishmentModalLabel.textContent = 'Modifier un établissement';
         SchoolManagement.elements.saveEstablishmentBtn.textContent = 'Modifier';
+        SchoolManagement.elements.addClassBtn.disabled = false;
         
         const establishment = SchoolManagement.data.establishments.find(est => est.id === id);
         if (establishment) {
-            // Remplir le formulaire avec les données existantes
             SchoolManagement.elements.establishmentId.value = establishment.id;
             SchoolManagement.elements.establishmentName.value = establishment.name;
             SchoolManagement.elements.establishmentDistrict.value = establishment.district;
@@ -61,7 +62,6 @@ function openEstablishmentModal(action, id = null) {
         }
     }
     
-    // Rafraîchir les classes
     if (action === 'edit' && id) {
         renderClassesTable(id);
     } else {
@@ -76,28 +76,26 @@ function openEstablishmentModal(action, id = null) {
 function saveEstablishment() {
     if (!Utils.validateForm(SchoolManagement.elements.establishmentForm)) return;
     
+    // Vérifier explicitement le mode d'action
+    const isEditMode = SchoolManagement.currentState.action === 'edit' && 
+                       SchoolManagement.elements.establishmentId.value;
+    
     const establishmentData = {
-        id: SchoolManagement.currentState.action === 'add' 
-            ? Utils.generateId() 
-            : SchoolManagement.elements.establishmentId.value,
+        id: isEditMode ? SchoolManagement.elements.establishmentId.value : Utils.generateId(),
         name: SchoolManagement.elements.establishmentName.value,
         district: SchoolManagement.elements.establishmentDistrict.value,
         creationDate: SchoolManagement.elements.establishmentDate.value
     };
-
-    if (SchoolManagement.currentState.action === 'add') {
-        SchoolManagement.data.establishments.push(establishmentData);
-    } else {
+    
+    if (isEditMode) {
         const index = SchoolManagement.data.establishments.findIndex(est => est.id === establishmentData.id);
         if (index !== -1) {
-            // Mise à jour de l'établissement existant
             SchoolManagement.data.establishments[index] = establishmentData;
-        } else {
-            // Cas où l'ID n'existe pas (ne devrait pas arriver)
-            SchoolManagement.data.establishments.push(establishmentData);
         }
+    } else {
+        SchoolManagement.data.establishments.push(establishmentData);
     }
-
+    
     SchoolManagement.saveData();
     renderEstablishmentsTable();
     SchoolManagement.elements.establishmentModal.hide();
